@@ -1,0 +1,210 @@
+{
+  "account_name": "Jane Doe",
+  "account_id": "ACC-2847591",
+  "period_start": "April 1, 2024",
+  "period_end": "April 30, 2024",
+  "summary": {
+    "total_value": 126177.18,
+    "total_cost": 97920.0,
+    "unrealized_gain": 18947.8,
+    "unrealized_gain_pct": 19.35,
+    "day_change": 842.5,
+    "day_change_pct": 0.67
+  },
+  "asset_allocation": [
+    { "name": "US Equities", "value": 81331.8, "pct": 64.46 },
+    { "name": "International Equities", "value": 20836.0, "pct": 16.51 },
+    { "name": "Fixed Income", "value": 14700.0, "pct": 11.65 },
+    { "name": "Cash & Equivalents", "value": 9309.38, "pct": 7.38 }
+  ],
+  "holdings": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "shares": 85,
+      "price": 171.48,
+      "value": 14575.8,
+      "cost": 11220.0,
+      "gain": 3355.8,
+      "gain_pct": 29.91
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft Corp.",
+      "shares": 50,
+      "price": 415.32,
+      "value": 20766.0,
+      "cost": 16500.0,
+      "gain": 4266.0,
+      "gain_pct": 25.85
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corp.",
+      "shares": 32,
+      "price": 847.2,
+      "value": 27110.4,
+      "cost": 18000.0,
+      "gain": 9110.4,
+      "gain_pct": 50.61
+    },
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase & Co.",
+      "shares": 60,
+      "price": 200.15,
+      "value": 12009.0,
+      "cost": 10800.0,
+      "gain": 1209.0,
+      "gain_pct": 11.19
+    },
+    {
+      "symbol": "JNJ",
+      "name": "Johnson & Johnson",
+      "shares": 45,
+      "price": 152.68,
+      "value": 6870.6,
+      "cost": 7200.0,
+      "gain": -329.4,
+      "gain_pct": -4.58
+    },
+    {
+      "symbol": "EWJ",
+      "name": "iShares MSCI Japan ETF",
+      "shares": 200,
+      "price": 72.35,
+      "value": 14470.0,
+      "cost": 13200.0,
+      "gain": 1270.0,
+      "gain_pct": 9.62
+    },
+    {
+      "symbol": "EEM",
+      "name": "iShares MSCI EM ETF",
+      "shares": 150,
+      "price": 42.44,
+      "value": 6366.0,
+      "cost": 6000.0,
+      "gain": 366.0,
+      "gain_pct": 6.1
+    },
+    {
+      "symbol": "BND",
+      "name": "Vanguard Total Bond ETF",
+      "shares": 200,
+      "price": 73.5,
+      "value": 14700.0,
+      "cost": 15000.0,
+      "gain": -300.0,
+      "gain_pct": -2.0
+    }
+  ],
+  "sector_breakdown": [
+    { "sector": "Technology", "value": 62452.2, "pct": 49.5, "positions": 3 },
+    {
+      "sector": "International",
+      "value": 20836.0,
+      "pct": 16.51,
+      "positions": 2
+    },
+    {
+      "sector": "Fixed Income",
+      "value": 14700.0,
+      "pct": 11.65,
+      "positions": 1
+    },
+    {
+      "sector": "Financial Services",
+      "value": 12009.0,
+      "pct": 9.52,
+      "positions": 1
+    },
+    {
+      "sector": "Cash & Equivalents",
+      "value": 9309.38,
+      "pct": 7.38,
+      "positions": 1
+    },
+    { "sector": "Healthcare", "value": 6870.6, "pct": 5.45, "positions": 1 }
+  ],
+  "metrics": [
+    { "label": "Portfolio Beta", "value": "1.12" },
+    { "label": "Dividend Yield", "value": "1.34%" },
+    { "label": "Avg P/E Ratio", "value": "28.5x" },
+    { "label": "YTD Return", "value": "+19.35%" },
+    { "label": "Sharpe Ratio", "value": "1.42" },
+    { "label": "Ann. Volatility", "value": "18.3%" }
+  ],
+  "transactions": [
+    {
+      "date": "Apr 03",
+      "type": "Buy",
+      "symbol": "NVDA",
+      "description": "Purchased 5 shares at $821.40",
+      "amount": -4107.0
+    },
+    {
+      "date": "Apr 05",
+      "type": "Dividend",
+      "symbol": "JNJ",
+      "description": "Quarterly cash dividend",
+      "amount": 110.7
+    },
+    {
+      "date": "Apr 08",
+      "type": "Buy",
+      "symbol": "AAPL",
+      "description": "Purchased 10 shares at $169.20",
+      "amount": -1692.0
+    },
+    {
+      "date": "Apr 10",
+      "type": "Sell",
+      "symbol": "EEM",
+      "description": "Sold 25 shares at $41.80",
+      "amount": 1045.0
+    },
+    {
+      "date": "Apr 12",
+      "type": "Buy",
+      "symbol": "BND",
+      "description": "Purchased 50 shares at $73.10",
+      "amount": -3655.0
+    },
+    {
+      "date": "Apr 15",
+      "type": "Dividend",
+      "symbol": "MSFT",
+      "description": "Quarterly cash dividend",
+      "amount": 37.5
+    },
+    {
+      "date": "Apr 18",
+      "type": "Interest",
+      "symbol": "—",
+      "description": "Cash sweep interest",
+      "amount": 24.38
+    },
+    {
+      "date": "Apr 22",
+      "type": "Buy",
+      "symbol": "EWJ",
+      "description": "Purchased 30 shares at $71.90",
+      "amount": -2157.0
+    },
+    {
+      "date": "Apr 24",
+      "type": "Sell",
+      "symbol": "JPM",
+      "description": "Sold 10 shares at $198.50",
+      "amount": 1985.0
+    },
+    {
+      "date": "Apr 26",
+      "type": "Buy",
+      "symbol": "JPM",
+      "description": "Purchased 10 shares at $200.15",
+      "amount": -2001.5
+    }
+  ]
+}
