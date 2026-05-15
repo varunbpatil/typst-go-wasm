@@ -5,9 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	typstcompiler "github.com/varunbpatil/typst-go-wasm"
 )
@@ -38,11 +37,15 @@ func TestCompile_Portfolio(t *testing.T) {
 	ctx := context.Background()
 
 	compiler, err := typstcompiler.NewCompiler(ctx)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { _ = compiler.Close(ctx) })
 
 	var data any
-	require.NoError(t, json.Unmarshal(portfolioSampleJSON, &data))
+	if err := json.Unmarshal(portfolioSampleJSON, &data); err != nil {
+		t.Fatal(err)
+	}
 
 	pdf, err := compiler.Compile(ctx, typstcompiler.CompileRequest{
 		Template: portfolioTyp,
@@ -50,18 +53,25 @@ func TestCompile_Portfolio(t *testing.T) {
 		Data:     data,
 		Fonts:    testFonts(),
 	})
-	require.NoError(t, err)
-	require.NotEmpty(t, pdf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pdf) == 0 {
+		t.Fatal("expected non-empty pdf")
+	}
 
-	err = os.WriteFile("testdata/portfolio-out.pdf", pdf, 0o644)
-	require.NoError(t, err)
+	if err := os.WriteFile("testdata/portfolio-out.pdf", pdf, 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestCompile_Error(t *testing.T) {
 	ctx := context.Background()
 
 	compiler, err := typstcompiler.NewCompiler(ctx)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { _ = compiler.Close(ctx) })
 
 	// Template references a field that doesn't exist in the empty data dict.
@@ -70,8 +80,12 @@ func TestCompile_Error(t *testing.T) {
 		Data:     map[string]string{},
 		Fonts:    testFonts(),
 	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "typst: compile error")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "typst: compile error") {
+		t.Fatalf("expected error to contain %q, got %q", "typst: compile error", err.Error())
+	}
 }
 
 func BenchmarkCompile_Portfolio(b *testing.B) {
