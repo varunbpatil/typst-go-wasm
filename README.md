@@ -18,10 +18,10 @@ Requires Go 1.25+. No CGo, no external binaries.
 
 ```
 caller (Go)
-  │  CompileRequest{Template, Files, Data, Fonts}
+  │  CompileRequest{Template, Files, Data, Fonts, PDFOpts}
   ▼
 Compiler.Compile()
-  │  JSON-encodes envelope {main, files, data, fonts (base64)}
+  │  JSON-encodes envelope {main, files, data, fonts (base64), pdf_options}
   │  writes it into WASM linear memory
   ▼
 typst_compiler.wasm  (Rust + typst-as-lib, compiled to WASM)
@@ -29,7 +29,9 @@ typst_compiler.wasm  (Rust + typst-as-lib, compiled to WASM)
   │  decodes base64 fonts → TypstEngine
   │  resolves aux file imports from the files map
   │  injects data as sys.inputs
-  │  compiles template → PDF bytes
+  │  compiles template → PagedDocument
+  │  applies PdfOptions (ident, timestamp, page ranges, standards, tagged)
+  │  renders PDF bytes
   ▼
 Compiler.Compile() returns []byte (PDF)
 ```
@@ -63,6 +65,17 @@ pdf, err := compiler.Compile(ctx, typst.CompileRequest{
     },
     // Raw TTF/OTF bytes. At least one font required.
     Fonts: [][]byte{regularTTF, boldTTF},
+    // Optional PDF output settings (all fields optional; zero value = typst defaults).
+    PDFOpts: typst.PDFOptions{
+        Ident:     "my-doc-stable-id", // reproducible PDF document ID
+        Timestamp: &now,               // time.Time; nil = no timestamp
+        PageRanges: []typst.PageRange{
+            {Start: 1, End: 3}, // pages 1–3
+            {Start: 5, End: 0}, // page 5 to end (0 = no bound)
+        },
+        Standards: []string{"a-2b"}, // PDF/A-2b conformance
+        Tagged:    &tagged,          // false to disable tagged PDF
+    },
 })
 ```
 
@@ -99,6 +112,35 @@ pdf, err := compiler.Compile(ctx, typst.CompileRequest{
     Fonts: [][]byte{rubikRegular, rubikMedium, rubikSemiBold},
 })
 ```
+
+## PDF options
+
+`CompileRequest.PDFOpts` accepts a `PDFOptions` struct to control the PDF output. All fields are optional; the zero value of `PDFOptions` produces the same result as the typst defaults.
+
+| Field        | Type          | Default       | Description                                                                                                                                       |
+|--------------|---------------|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Ident`      | `string`      | `""` (auto)   | Stable document identifier. Used to derive a reproducible PDF document ID. If empty, typst hashes the document title and author instead.          |
+| `Timestamp`  | `*time.Time`  | `nil`         | Creation timestamp embedded in the PDF. `nil` means no timestamp.                                                                                 |
+| `PageRanges` | `[]PageRange` | `nil` (all)   | Which pages to include. 1-indexed; `Start`/`End` of `0` mean "no bound". `nil` exports all pages. **Requires `Tagged: ptr(false)`** (see below).  |
+| `Standards`  | `[]string`    | `nil` (none)  | PDF standards to conform to. Accepted values: `"1.4"`, `"1.5"`, `"1.6"`, `"1.7"`, `"2.0"`, `"a-1b"`, `"a-1a"`, `"a-2b"`, `"a-2u"`, `"a-2a"`, `"a-3b"`, `"a-3u"`, `"a-3a"`, and others supported by typst. |
+| `Tagged`     | `*bool`       | `nil` (true)  | Whether to write a tagged PDF for accessibility. `nil` uses the typst default (`true`). Pass a pointer to `false` to disable.                     |
+
+### PageRanges and tagged PDF
+
+`PageRanges` and tagged PDF (`Tagged: nil` or `Tagged: ptr(true)`) are mutually exclusive. Passing both returns an error immediately. Set `Tagged` to `false` whenever you use `PageRanges`:
+
+```go
+tagged := false
+pdf, err := compiler.Compile(ctx, typst.CompileRequest{
+    ...
+    PDFOpts: typst.PDFOptions{
+        PageRanges: []typst.PageRange{{Start: 1, End: 3}},
+        Tagged:     &tagged,
+    },
+})
+```
+
+This is a [known typst limitation](https://github.com/typst/typst/issues/7743) — the underlying typst-pdf library does not support the combination.
 
 ## Concurrency and memory
 

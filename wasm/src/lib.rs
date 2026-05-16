@@ -3,12 +3,15 @@
 
 use std::collections::HashMap;
 use std::fmt::Write as FmtWrite;
+use std::num::NonZeroUsize;
 
 use base64::Engine as _;
+use time::format_description::well_known::Rfc3339;
 use typst::diag::Warned;
-use typst::foundations::{Array, Dict, Str, Value};
-use typst::layout::PagedDocument;
+use typst::foundations::{Array, Datetime, Dict, Str, Value};
+use typst::layout::{PageRanges, PagedDocument};
 use typst_as_lib::TypstEngine;
+use typst_pdf::{PdfOptions, PdfStandard, PdfStandards, Timestamp};
 
 // ---------- Static output buffer --------------------------------------------
 
@@ -19,14 +22,35 @@ static mut OUTPUT: Vec<u8> = Vec::new();
 // The Go caller sends a single JSON envelope:
 //
 //   {
-//     "main":  "... typst source of the main template ...",
-//     "files": { "layout.typ": "...", "other.typ": "..." },
-//     "data":  { ... arbitrary caller data, injected as sys.inputs ... },
-//     "fonts": [ "<base64-encoded TTF/OTF>", ... ]
+//     "main":        "... typst source of the main template ...",
+//     "files":       { "layout.typ": "...", "other.typ": "..." },
+//     "data":        { ... arbitrary caller data, injected as sys.inputs ... },
+//     "fonts":       [ "<base64-encoded TTF/OTF>", ... ],
+//     "pdf_options": { "ident": "...", "timestamp": "2024-01-15T10:30:00+05:30", "page_ranges": [...],
+//                      "standards": ["a-2b"], "tagged": false }
 //   }
 //
 // Go's encoding/json marshals [][]byte as an array of standard base64 strings,
 // which is why fonts arrive here as Vec<String>.
+// pdf_options is omitted entirely when the caller uses zero-value PDFOptions.
+// Within pdf_options, absent fields default to: ident=auto, timestamp=none,
+// page_ranges=all, standards=none, tagged=true.
+
+#[derive(serde::Deserialize)]
+struct WirePageRange {
+    start: u32,
+    end: u32,
+}
+
+#[derive(serde::Deserialize, Default)]
+#[serde(default)]
+struct WirePdfOptions {
+    ident: Option<String>,
+    timestamp: Option<String>, // RFC 3339
+    page_ranges: Option<Vec<WirePageRange>>,
+    standards: Option<Vec<PdfStandard>>,
+    tagged: Option<bool>,
+}
 
 #[derive(serde::Deserialize)]
 struct Envelope {
@@ -37,6 +61,8 @@ struct Envelope {
     data: serde_json::Value,
     #[serde(default)]
     fonts: Vec<String>,
+    #[serde(default)]
+    pdf_options: WirePdfOptions,
 }
 
 // ---------- JSON → Typst Dict conversion ------------------------------------
@@ -101,6 +127,64 @@ pub extern "C" fn compile(json_ptr: u32, json_len: u32) -> u64 {
     }
 }
 
+fn build_pdf_options(opts: &WirePdfOptions) -> Result<PdfOptions<'_>, Box<dyn std::error::Error>> {
+    let ident = match opts.ident.as_deref() {
+        Some(s) if !s.is_empty() => typst::foundations::Smart::Custom(s),
+        _ => typst::foundations::Smart::Auto,
+    };
+
+    let timestamp = opts
+        .timestamp
+        .as_deref()
+        .map(|s| -> Result<_, Box<dyn std::error::Error>> {
+            let odt = time::OffsetDateTime::parse(s, &Rfc3339)
+                .map_err(|e| format!("invalid timestamp: {e}"))?;
+            let dt = Datetime::from_ymd_hms(
+                odt.year(),
+                odt.month() as u8,
+                odt.day(),
+                odt.hour(),
+                odt.minute(),
+                odt.second(),
+            )
+            .ok_or("invalid timestamp components")?;
+            let offset_minutes = i32::from(odt.offset().whole_minutes());
+            if offset_minutes == 0 {
+                Ok(Timestamp::new_utc(dt))
+            } else {
+                Ok(Timestamp::new_local(dt, offset_minutes).ok_or("invalid utc offset")?)
+            }
+        });
+    let timestamp = timestamp.transpose()?;
+
+    let page_ranges = opts.page_ranges.as_ref().map(|ranges| {
+        let converted = ranges
+            .iter()
+            .map(|r| {
+                let start = NonZeroUsize::new(r.start as usize);
+                let end = NonZeroUsize::new(r.end as usize);
+                start..=end
+            })
+            .collect();
+        PageRanges::new(converted)
+    });
+
+    let standards = match &opts.standards {
+        Some(list) if !list.is_empty() => {
+            PdfStandards::new(list).map_err(|e| format!("invalid pdf standards: {e}"))?
+        }
+        _ => PdfStandards::default(),
+    };
+
+    Ok(PdfOptions {
+        ident,
+        timestamp,
+        page_ranges,
+        standards,
+        tagged: opts.tagged.unwrap_or(true),
+    })
+}
+
 fn do_compile(json_ptr: u32, json_len: u32) -> Result<u64, Box<dyn std::error::Error>> {
     // Safety: caller guarantees the pointer/length describe a valid byte slice
     // that remains valid for the duration of this call.
@@ -145,8 +229,9 @@ fn do_compile(json_ptr: u32, json_len: u32) -> Result<u64, Box<dyn std::error::E
     let output: Result<PagedDocument, _> = output;
     let doc = output.map_err(|e| format!("typst compile error: {e:?}"))?;
 
-    let pdf_bytes = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default())
-        .map_err(|e| format!("typst pdf error: {e:?}"))?;
+    let pdf_opts = build_pdf_options(&envelope.pdf_options)?;
+    let pdf_bytes =
+        typst_pdf::pdf(&doc, &pdf_opts).map_err(|e| format!("typst pdf error: {e:?}"))?;
 
     // Store in static buffer and return packed (ptr << 32 | len).
     // Safety: WASM is single-threaded; no concurrent access to OUTPUT.
