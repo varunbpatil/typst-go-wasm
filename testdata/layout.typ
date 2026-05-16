@@ -86,7 +86,7 @@
 #let apply-layout(data, body) = {
   set page(
     paper: "us-letter",
-    margin: (top: 44pt, bottom: footer-height, x: 0pt),
+    margin: (top: 42pt, bottom: footer-height, x: 0pt),
     header: conf-header(data),
     footer: conf-footer,
     header-ascent: 0pt,
@@ -94,5 +94,5 @@
   )
   set text(font: "Rubik", size: 7pt, fill: dark, weight: "regular", features: ("tnum",))
   set par(leading: 0.55em)
-  body
+  pad(x: 12mm, body)
 }

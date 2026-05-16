@@ -102,12 +102,12 @@
 #section-heading("Holdings")
 
 #table(
-  columns: (auto, 1fr, auto, auto, auto, auto, auto),
-  align: (left, left, right, right, right, right, right),
+  columns: (auto, 1fr, auto, auto, auto, auto, auto, auto),
+  align: (left, left, right, right, right, right, right, right),
   stroke: none,
   fill: tbl-fill,
   inset: (x: 6pt, y: 4pt),
-  tbl-hdr("Symbol", "Name", "Shares", "Price", "Market Value", "Cost Basis", "Gain / Loss"),
+  tbl-hdr("Symbol", "Name", "Shares", "Price", "Market Value", "Cost Basis", "Gain / Loss", "Return"),
   ..data
     .holdings
     .map(h => (
@@ -117,7 +117,8 @@
       fmt-money(h.price),
       fmt-money(h.value),
       fmt-money(h.cost),
-      gain-text(h.gain, fmt-money(h.gain) + " (" + fmt-pct(h.gain_pct) + ")"),
+      gain-text(h.gain, fmt-money(h.gain)),
+      gain-text(h.gain_pct, fmt-pct(h.gain_pct)),
     ))
     .flatten(),
 )
