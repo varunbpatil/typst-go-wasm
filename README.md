@@ -9,7 +9,7 @@ No external processes, no network calls, no Typst CLI binary required.
 ## Installation
 
 ```sh
-go get github.com/varunbpatil/typst-go-wasm@latest
+go get github.com/dseif0x/typst-go-wasm@latest
 ```
 
 Requires Go 1.25+. No CGo, no external binaries.
@@ -18,16 +18,17 @@ Requires Go 1.25+. No CGo, no external binaries.
 
 ```
 caller (Go)
-  │  CompileRequest{Template, Files, Data, Fonts, PDFOpts}
+  │  CompileRequest{Template, Files, BinaryFiles, Data, Fonts, PDFOpts}
   ▼
 Compiler.Compile()
-  │  JSON-encodes envelope {main, files, data, fonts (base64), pdf_options}
+  │  JSON-encodes envelope {main, files, binary_files (base64), data, fonts (base64), pdf_options}
   │  writes it into WASM linear memory
   ▼
 typst_compiler.wasm  (Rust + typst-as-lib, compiled to WASM)
   │  decodes envelope
   │  decodes base64 fonts → TypstEngine
   │  resolves aux file imports from the files map
+  │  serves binary assets (images etc.) via the static file resolver
   │  injects data as sys.inputs
   │  compiles template → PagedDocument
   │  applies PdfOptions (ident, timestamp, page ranges, standards, tagged)
@@ -41,7 +42,7 @@ The WASM module is embedded in the Go binary at compile time via `//go:embed`. A
 ## Usage
 
 ```go
-import "github.com/varunbpatil/typst-go-wasm"
+import "github.com/dseif0x/typst-go-wasm"
 
 compiler, err := typst.NewCompiler(ctx)
 if err != nil { ... }
@@ -57,6 +58,10 @@ pdf, err := compiler.Compile(ctx, typst.CompileRequest{
     // Auxiliary files the template may #import by name.
     Files: map[string]string{
         "layout.typ": layoutTypContent,
+    },
+    // Binary assets the template may reference by name.
+    BinaryFiles: map[string][]byte{
+        "logo.png": logoPngBytes, // #image("logo.png")
     },
     // Any JSON-serializable value; available in the template as sys.inputs.
     Data: map[string]any{
@@ -94,6 +99,8 @@ Inside the Typst template, access data via `sys.inputs`:
 The WASM binary contains no embedded fonts. You must supply at least one font via `CompileRequest.Fonts`; any font name referenced in a template that is not present in the provided bytes will cause a compile error.
 
 Font bytes are sent through the JSON envelope as base64 strings (Go's `encoding/json` handles this automatically for `[][]byte`) and decoded inside WASM before the engine is built.
+
+Binary auxiliary files (images etc.) passed via `CompileRequest.BinaryFiles` travel the same way — base64-encoded through the JSON envelope — and are served to typst through the static file resolver, so a template can reference them by name (e.g. `#image("logo.png")`).
 
 The repository ships three [Rubik](https://fonts.google.com/specimen/Rubik) weights (OFL license) in `fonts/` as a ready-to-use example:
 

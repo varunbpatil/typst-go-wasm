@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"os"
 	"runtime"
 	"strings"
@@ -16,7 +18,7 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 
-	typst "github.com/varunbpatil/typst-go-wasm"
+	typst "github.com/dseif0x/typst-go-wasm"
 )
 
 //go:embed testdata/layout.typ
@@ -95,6 +97,42 @@ func TestCompile_Error(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "typst: compile error") {
 		t.Fatalf("expected error to contain %q, got %q", "typst: compile error", err.Error())
+	}
+}
+
+// TestCompile_BinaryFiles renders a generated PNG through #image(),
+// pinning the binary_files path through the WASM shim.
+func TestCompile_BinaryFiles(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	c, err := typst.NewCompiler(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close(ctx) })
+
+	img := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	for i := range img.Pix {
+		img.Pix[i] = 0xff
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+
+	pdf, err := c.Compile(ctx, typst.CompileRequest{
+		Template: `#image("logo.png", width: 20mm)`,
+		BinaryFiles: map[string][]byte{
+			"logo.png": buf.Bytes(),
+		},
+		Fonts: testFonts(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(pdf, []byte("%PDF")) {
+		t.Fatal("output is not a PDF")
 	}
 }
 

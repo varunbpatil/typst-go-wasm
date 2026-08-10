@@ -24,6 +24,7 @@ static mut OUTPUT: Vec<u8> = Vec::new();
 //   {
 //     "main":        "... typst source of the main template ...",
 //     "files":       { "layout.typ": "...", "other.typ": "..." },
+//     "binary_files":{ "logo.png": "<base64>", ... },
 //     "data":        { ... arbitrary caller data, injected as sys.inputs ... },
 //     "fonts":       [ "<base64-encoded TTF/OTF>", ... ],
 //     "pdf_options": { "ident": "...", "timestamp": "2024-01-15T10:30:00+05:30", "page_ranges": [...],
@@ -57,6 +58,8 @@ struct Envelope {
     main: String,
     #[serde(default)]
     files: HashMap<String, String>,
+    #[serde(default)]
+    binary_files: HashMap<String, String>,
     #[serde(default)]
     data: serde_json::Value,
     #[serde(default)]
@@ -219,9 +222,27 @@ fn do_compile(json_ptr: u32, json_len: u32) -> Result<u64, Box<dyn std::error::E
         .map(|(k, v)| (k.as_str(), v.as_str()))
         .collect();
 
+    // Decode binary assets (images etc.) from base64 for the file resolver.
+    // Keys must be &str (IntoFileId); the decoded pairs own the data.
+    let decoded_binaries: Vec<(String, Vec<u8>)> = envelope
+        .binary_files
+        .iter()
+        .map(|(k, v)| {
+            base64::engine::general_purpose::STANDARD
+                .decode(v)
+                .map(|bytes| (k.clone(), bytes))
+                .map_err(|e| format!("binary file {k} base64 decode: {e}"))
+        })
+        .collect::<Result<_, _>>()?;
+    let binary_files: Vec<(&str, &[u8])> = decoded_binaries
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_slice()))
+        .collect();
+
     let engine = TypstEngine::builder()
         .main_file(envelope.main.as_str())
         .with_static_source_file_resolver(aux_files)
+        .with_static_file_resolver(binary_files)
         .fonts(font_slices)
         .build();
 

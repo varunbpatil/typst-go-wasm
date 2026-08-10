@@ -1,4 +1,4 @@
-module github.com/varunbpatil/typst-go-wasm
+module github.com/dseif0x/typst-go-wasm
 
 go 1.25.0
 

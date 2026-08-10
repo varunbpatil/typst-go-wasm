@@ -82,6 +82,9 @@ type CompileRequest struct {
 	// Files is an optional map of auxiliary filenames to their content
 	// (e.g. "layout.typ" → "..."), which the template may import by name.
 	Files map[string]string
+	// BinaryFiles maps filenames to raw bytes for binary assets the template
+	// may reference by name — e.g. "logo.png" → PNG bytes for #image("logo.png").
+	BinaryFiles map[string][]byte
 	// Data is JSON-serialized and injected as sys.inputs in the template.
 	Data any
 	// Fonts contains raw TTF/OTF font bytes. At least one font is required;
@@ -112,11 +115,13 @@ type wirePDFOptions struct {
 // Go's encoding/json marshals [][]byte as an array of base64 strings,
 // which the WASM side decodes back to raw bytes.
 type envelope struct {
-	Main       string            `json:"main"`
-	Files      map[string]string `json:"files,omitempty"`
-	Data       any               `json:"data"`
-	Fonts      [][]byte          `json:"fonts,omitempty"`
-	PDFOptions *wirePDFOptions   `json:"pdf_options,omitempty"`
+	Main  string            `json:"main"`
+	Files map[string]string `json:"files,omitempty"`
+	// []byte values marshal as base64 strings, decoded on the WASM side.
+	BinaryFiles map[string][]byte `json:"binary_files,omitempty"`
+	Data        any               `json:"data"`
+	Fonts       [][]byte          `json:"fonts,omitempty"`
+	PDFOptions  *wirePDFOptions   `json:"pdf_options,omitempty"`
 }
 
 func buildWirePDFOptions(opt PDFOptions) *wirePDFOptions {
@@ -150,11 +155,12 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) ([]byte, err
 	}
 
 	env := envelope{
-		Main:       req.Template,
-		Files:      req.Files,
-		Data:       req.Data,
-		Fonts:      req.Fonts,
-		PDFOptions: buildWirePDFOptions(req.PDFOpts),
+		Main:        req.Template,
+		Files:       req.Files,
+		BinaryFiles: req.BinaryFiles,
+		Data:        req.Data,
+		Fonts:       req.Fonts,
+		PDFOptions:  buildWirePDFOptions(req.PDFOpts),
 	}
 
 	jsonBytes, err := json.Marshal(env)
